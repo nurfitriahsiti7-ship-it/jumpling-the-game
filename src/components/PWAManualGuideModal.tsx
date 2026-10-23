@@ -257,3 +257,6 @@ export const PWAManualGuideModal: React.FC<PWAManualGuideModalProps> = ({
     </div>
   );
 };
+
+export const PWAInstallGuide = PWAManualGuideModal;
+

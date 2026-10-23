@@ -111,3 +111,6 @@ export const PWAInstallWidget: React.FC<PWAInstallWidgetProps> = ({
     </aside>
   );
 };
+
+export const PWAInstallPrompt = PWAInstallWidget;
+

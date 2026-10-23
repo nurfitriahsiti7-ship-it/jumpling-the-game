@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { PWAStatusManager, DeviceInfo } from '../game/pwaStatusManager';
 
 export interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[];
@@ -9,98 +10,51 @@ export interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
 }
 
-const STORAGE_KEYS = {
-  DISMISSED_UNTIL: 'jumping_pwa_dismissed_until',
-  INSTALLED_FLAG: 'jumping_pwa_installed_flag',
-  VISIT_COUNT: 'jumping_pwa_visit_count',
-};
-
 export type DeviceType = 'ios' | 'android' | 'desktop' | 'other';
 
-export function usePWA() {
+export function usePWAInstall() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState<boolean>(false);
   const [isStandalone, setIsStandalone] = useState<boolean>(false);
-  const [deviceType, setDeviceType] = useState<DeviceType>('desktop');
-  const [isIOS, setIsIOS] = useState<boolean>(false);
+  const [deviceInfo, setDeviceInfo] = useState<DeviceInfo>({
+    isIOS: false,
+    isAndroid: false,
+    isDesktop: true,
+    isSafari: false,
+    isChrome: false,
+    platformName: 'Browser',
+  });
   const [isDismissed, setIsDismissed] = useState<boolean>(false);
   const [showPromptWidget, setShowPromptWidget] = useState<boolean>(false);
   const [showManualGuide, setShowManualGuide] = useState<boolean>(false);
   const [isOnline, setIsOnline] = useState<boolean>(typeof navigator !== 'undefined' ? navigator.onLine : true);
 
-  // Keep a ref for deferredPrompt to avoid stale closures in event listeners
   const promptRef = useRef<BeforeInstallPromptEvent | null>(null);
 
-  // Check standalone mode (app running as installed PWA)
-  const checkStandalone = useCallback((): boolean => {
-    if (typeof window === 'undefined') return false;
-
-    // Standard display-mode check (CSS media queries)
-    const isStandaloneDisplay = window.matchMedia('(display-mode: standalone)').matches;
-    const isFullscreenDisplay = window.matchMedia('(display-mode: fullscreen)').matches;
-    const isMinimalUiDisplay = window.matchMedia('(display-mode: minimal-ui)').matches;
-
-    // iOS Safari standalone property
-    const isIOSStandalone = (window.navigator as unknown as { standalone?: boolean }).standalone === true;
-
-    // Android TWA referrer check
-    const isTWA = typeof document !== 'undefined' && document.referrer.includes('android-app://');
-
-    return isStandaloneDisplay || isFullscreenDisplay || isMinimalUiDisplay || isIOSStandalone || isTWA;
-  }, []);
-
-  // Check if user dismissed prompt recently
-  const checkIsDismissed = useCallback((): boolean => {
-    try {
-      const untilStr = localStorage.getItem(STORAGE_KEYS.DISMISSED_UNTIL);
-      if (!untilStr) return false;
-      const until = parseInt(untilStr, 10);
-      return Date.now() < until;
-    } catch {
-      return false;
-    }
-  }, []);
-
   useEffect(() => {
-    // 1. Device and OS Detection
-    const ua = navigator.userAgent.toLowerCase();
-    const isIosDevice = /iphone|ipad|ipod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    const isAndroidDevice = /android/.test(ua);
-    setIsIOS(isIosDevice);
-
-    if (isIosDevice) {
-      setDeviceType('ios');
-    } else if (isAndroidDevice) {
-      setDeviceType('android');
-    } else {
-      setDeviceType('desktop');
-    }
+    // 1. Device profiling
+    const dev = PWAStatusManager.getDeviceInfo();
+    setDeviceInfo(dev);
 
     // 2. Track visit count
-    try {
-      const visits = parseInt(localStorage.getItem(STORAGE_KEYS.VISIT_COUNT) || '0', 10);
-      localStorage.setItem(STORAGE_KEYS.VISIT_COUNT, (visits + 1).toString());
-    } catch {
-      // fallback
-    }
+    PWAStatusManager.recordVisit();
 
-    // 3. Standalone & Installed Check
-    const standaloneNow = checkStandalone();
+    // 3. Standalone check
+    const standaloneNow = PWAStatusManager.isRunningStandalone();
     setIsStandalone(standaloneNow);
 
-    const flagged = localStorage.getItem(STORAGE_KEYS.INSTALLED_FLAG) === 'true';
-    const installedNow = standaloneNow || flagged;
+    const installedNow = PWAStatusManager.isInstalled();
     setIsInstalled(installedNow);
 
-    const dismissed = checkIsDismissed();
+    const dismissed = PWAStatusManager.isSnoozed();
     setIsDismissed(dismissed);
 
-    // 4. Smart Auto-Prompt: If not installed and not dismissed, show widget after a 2-second gentle delay
+    // 4. Smart Auto-Prompt: If not installed and not snoozed, show widget after a 2-second gentle delay
     let timer: NodeJS.Timeout | null = null;
     if (!installedNow && !dismissed) {
       timer = setTimeout(() => {
-        // Re-verify standalone state before revealing
-        if (!checkStandalone()) {
+        // Re-verify standalone state before revealing widget
+        if (!PWAStatusManager.isRunningStandalone()) {
           setShowPromptWidget(true);
         }
       }, 2000);
@@ -109,7 +63,7 @@ export function usePWA() {
     return () => {
       if (timer) clearTimeout(timer);
     };
-  }, [checkStandalone, checkIsDismissed]);
+  }, []);
 
   // Event Listeners: beforeinstallprompt, appinstalled, visibilitychange, online/offline
   useEffect(() => {
@@ -121,7 +75,7 @@ export function usePWA() {
       promptRef.current = promptEvent;
 
       // If user hasn't installed and hasn't snoozed, display widget
-      if (!checkStandalone() && !checkIsDismissed()) {
+      if (!PWAStatusManager.isRunningStandalone() && !PWAStatusManager.isSnoozed()) {
         setShowPromptWidget(true);
       }
     };
@@ -133,17 +87,12 @@ export function usePWA() {
       promptRef.current = null;
       setShowPromptWidget(false);
       setShowManualGuide(false);
-      try {
-        localStorage.setItem(STORAGE_KEYS.INSTALLED_FLAG, 'true');
-        localStorage.removeItem(STORAGE_KEYS.DISMISSED_UNTIL);
-      } catch {
-        // fallback
-      }
+      PWAStatusManager.setInstalled();
     };
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        const isStand = checkStandalone();
+        const isStand = PWAStatusManager.isRunningStandalone();
         setIsStandalone(isStand);
         if (isStand) {
           setIsInstalled(true);
@@ -168,7 +117,7 @@ export function usePWA() {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, [checkStandalone, checkIsDismissed]);
+  }, []);
 
   // Trigger Installation Action
   const install = useCallback(async (): Promise<boolean> => {
@@ -184,11 +133,7 @@ export function usePWA() {
           setDeferredPrompt(null);
           promptRef.current = null;
           setShowPromptWidget(false);
-          try {
-            localStorage.setItem(STORAGE_KEYS.INSTALLED_FLAG, 'true');
-          } catch {
-            // fallback
-          }
+          PWAStatusManager.setInstalled();
           return true;
         } else {
           // User dismissed native prompt; snooze widget for 48 hours
@@ -211,12 +156,7 @@ export function usePWA() {
   const dismiss = useCallback((hours: number = 48) => {
     setShowPromptWidget(false);
     setIsDismissed(true);
-    try {
-      const until = Date.now() + hours * 60 * 60 * 1000;
-      localStorage.setItem(STORAGE_KEYS.DISMISSED_UNTIL, until.toString());
-    } catch {
-      // fallback
-    }
+    PWAStatusManager.snooze(hours);
   }, []);
 
   // Explicitly open prompt widget (e.g., from Settings or Header button)
@@ -230,12 +170,13 @@ export function usePWA() {
   }, [deferredPrompt, install]);
 
   return {
-    isInstallable: !!deferredPrompt || isIOS || deviceType === 'android',
+    isInstallable: !!deferredPrompt || deviceInfo.isIOS || deviceInfo.isAndroid,
     hasNativePrompt: !!deferredPrompt,
     isInstalled,
     isStandalone,
-    deviceType,
-    isIOS,
+    deviceType: (deviceInfo.isIOS ? 'ios' : deviceInfo.isAndroid ? 'android' : 'desktop') as DeviceType,
+    isIOS: deviceInfo.isIOS,
+    deviceInfo,
     isOnline,
     isDismissed,
     showPromptWidget: showPromptWidget && !isInstalled,
@@ -246,3 +187,6 @@ export function usePWA() {
     openInstallPrompt,
   };
 }
+
+// Export both names for maximum compatibility
+export const usePWA = usePWAInstall;
