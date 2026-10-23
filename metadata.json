@@ -1,0 +1,6 @@
+{
+  "name": "JUMPING: THE GAME",
+  "description": "Jump Higher. Run Further. Beat Your Best! An action-packed 2D endless runner arcade game featuring dynamic obstacles, double jumps, power-ups, and cityscapes.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
