@@ -40,6 +40,10 @@ import { SettingsModal } from './components/SettingsModal';
 import { ShopModal } from './components/ShopModal';
 import { MissionsModal } from './components/MissionsModal';
 import { LeaderboardModal } from './components/LeaderboardModal';
+import { usePWA } from './hooks/usePWA';
+import { PWAInstallWidget } from './components/PWAInstallWidget';
+import { PWAManualGuideModal } from './components/PWAManualGuideModal';
+import { OfflineIndicator } from './components/OfflineIndicator';
 
 export default function App() {
   // Game State
@@ -72,6 +76,20 @@ export default function App() {
   const [showShop, setShowShop] = useState<boolean>(false);
   const [showMissions, setShowMissions] = useState<boolean>(false);
   const [showLeaderboard, setShowLeaderboard] = useState<boolean>(false);
+
+  // Progressive Web App (PWA) System
+  const {
+    isInstalled,
+    isIOS,
+    isOnline,
+    showPromptWidget,
+    showManualGuide,
+    setShowManualGuide,
+    install,
+    dismiss,
+    openInstallPrompt,
+    deviceType,
+  } = usePWA();
 
   // Engine instance ref
   const engineRef = useRef<GameEngine | null>(null);
@@ -283,14 +301,25 @@ export default function App() {
               activeSkin={activeSkin}
               missions={missions}
               isMuted={settings.soundMuted}
+              isInstalled={isInstalled}
               onPlay={handleStartGame}
               onOpenHowToPlay={() => setShowHowToPlay(true)}
               onOpenMissions={() => setShowMissions(true)}
               onOpenShop={() => setShowShop(true)}
               onOpenSettings={() => setShowSettings(true)}
               onOpenLeaderboard={() => setShowLeaderboard(true)}
+              onOpenInstall={openInstallPrompt}
               onToggleMute={handleToggleMute}
             />
+
+            {/* Smart PWA Installation Floating Card (only in Main Menu, never during gameplay) */}
+            {showPromptWidget && !isInstalled && (
+              <PWAInstallWidget
+                onInstall={install}
+                onDismiss={() => dismiss(24)}
+                isIOS={isIOS}
+              />
+            )}
           </div>
         )}
 
@@ -331,6 +360,8 @@ export default function App() {
         {showSettings && (
           <SettingsModal
             settings={settings}
+            isInstalled={isInstalled}
+            onOpenInstall={openInstallPrompt}
             onUpdateSettings={handleUpdateSettings}
             onClose={() => setShowSettings(false)}
           />
@@ -360,6 +391,18 @@ export default function App() {
             onClose={() => setShowLeaderboard(false)}
           />
         )}
+
+        {/* PWA Step-by-Step Manual Guide Modal (for iOS Safari & Unsupported Browsers) */}
+        {showManualGuide && (
+          <PWAManualGuideModal
+            deviceType={deviceType}
+            isIOS={isIOS}
+            onClose={() => setShowManualGuide(false)}
+          />
+        )}
+
+        {/* Offline Connectivity Toast Indicator */}
+        <OfflineIndicator isOnline={isOnline} />
       </div>
     </div>
   );

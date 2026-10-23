@@ -1,5 +1,5 @@
 import React from 'react';
-import { Play, HelpCircle, Trophy, ShoppingBag, Settings, Volume2, VolumeX, Flame } from 'lucide-react';
+import { Play, HelpCircle, Trophy, ShoppingBag, Settings, Volume2, VolumeX, Flame, Download } from 'lucide-react';
 import { CharacterSkin, Mission } from '../game/types';
 
 interface MainMenuProps {
@@ -8,12 +8,14 @@ interface MainMenuProps {
   activeSkin: CharacterSkin;
   missions: Mission[];
   isMuted: boolean;
+  isInstalled?: boolean;
   onPlay: () => void;
   onOpenHowToPlay: () => void;
   onOpenMissions: () => void;
   onOpenShop: () => void;
   onOpenSettings: () => void;
   onOpenLeaderboard: () => void;
+  onOpenInstall?: () => void;
   onToggleMute: () => void;
 }
 
@@ -23,12 +25,14 @@ export const MainMenu: React.FC<MainMenuProps> = ({
   activeSkin,
   missions,
   isMuted,
+  isInstalled = false,
   onPlay,
   onOpenHowToPlay,
   onOpenMissions,
   onOpenShop,
   onOpenSettings,
   onOpenLeaderboard,
+  onOpenInstall,
   onToggleMute,
 }) => {
   const completedMissionsCount = missions.filter(m => m.completed).length;
@@ -57,8 +61,18 @@ export const MainMenu: React.FC<MainMenuProps> = ({
           </div>
         </div>
 
-        {/* Quick Sound / Settings Actions */}
+        {/* Quick Sound / Install / Settings Actions */}
         <div className="flex items-center gap-2">
+          {!isInstalled && onOpenInstall && (
+            <button
+              onClick={onOpenInstall}
+              className="flex items-center gap-1.5 px-3 py-1.5 min-h-[40px] rounded-xl bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-400 hover:to-rose-400 font-game text-xs text-slate-950 uppercase tracking-wider shadow-md active:scale-95 transition cursor-pointer"
+              title="Install Game App"
+            >
+              <Download className="w-3.5 h-3.5 stroke-[2.5]" />
+              <span className="hidden sm:inline">Install App</span>
+            </button>
+          )}
           <button
             onClick={onToggleMute}
             className="w-10 h-10 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-200 transition cursor-pointer"

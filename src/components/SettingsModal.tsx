@@ -1,15 +1,19 @@
 import React from 'react';
-import { X, Volume2, VolumeX, Music, Smartphone } from 'lucide-react';
+import { X, Volume2, VolumeX, Music, Smartphone, Download, CheckCircle2 } from 'lucide-react';
 import { GameSettings } from '../game/types';
 
 interface SettingsModalProps {
   settings: GameSettings;
+  isInstalled?: boolean;
+  onOpenInstall?: () => void;
   onUpdateSettings: (newSettings: GameSettings) => void;
   onClose: () => void;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
   settings,
+  isInstalled = false,
+  onOpenInstall,
   onUpdateSettings,
   onClose,
 }) => {
@@ -123,6 +127,37 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   {mode}
                 </button>
               ))}
+            </div>
+          </div>
+
+          {/* PWA App Installation Section */}
+          <div className="pt-2 border-t border-slate-800">
+            <div className="flex items-center justify-between bg-slate-950/60 border border-slate-800 p-3.5 rounded-2xl">
+              <div>
+                <div className="font-semibold text-sm text-white flex items-center gap-1.5">
+                  <Download className="w-4 h-4 text-amber-400" />
+                  <span>Aplikasi Game (PWA)</span>
+                </div>
+                <div className="text-xs text-slate-400 mt-0.5">
+                  {isInstalled
+                    ? 'Aplikasi terinstal & siap dimainkan secara native'
+                    : 'Pasang ke layar utama untuk akses instan & layar penuh'}
+                </div>
+              </div>
+
+              {isInstalled ? (
+                <div className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-xs font-bold">
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Terpasang</span>
+                </div>
+              ) : onOpenInstall ? (
+                <button
+                  onClick={onOpenInstall}
+                  className="px-3.5 py-2 min-h-[44px] rounded-xl bg-gradient-to-r from-amber-500 to-rose-500 hover:brightness-110 font-game text-xs text-slate-950 uppercase tracking-wider shadow-md active:scale-95 transition cursor-pointer"
+                >
+                  Install
+                </button>
+              ) : null}
             </div>
           </div>
         </div>
