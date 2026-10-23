@@ -66,11 +66,11 @@ export const MainMenu: React.FC<MainMenuProps> = ({
           {!isInstalled && onOpenInstall && (
             <button
               onClick={onOpenInstall}
-              className="flex items-center gap-1.5 px-3 py-1.5 min-h-[40px] rounded-xl bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-400 hover:to-rose-400 font-game text-xs text-slate-950 uppercase tracking-wider shadow-md active:scale-95 transition cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 min-h-[40px] rounded-xl bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-400 hover:to-rose-400 font-game text-[11px] sm:text-xs text-slate-950 uppercase tracking-wider shadow-md active:scale-95 transition cursor-pointer"
               title="Install Game App"
             >
               <Download className="w-3.5 h-3.5 stroke-[2.5]" />
-              <span className="hidden sm:inline">Install App</span>
+              <span>Install App</span>
             </button>
           )}
           <button
@@ -134,7 +134,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
       </div>
 
       {/* Bottom Navigation Grid */}
-      <div className="w-full max-w-2xl grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 z-10 pt-2">
+      <div className="w-full max-w-2xl grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 z-10 pt-2 pb-28 sm:pb-2">
         {/* HOW TO PLAY */}
         <button
           onClick={onOpenHowToPlay}
